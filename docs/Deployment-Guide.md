@@ -183,3 +183,37 @@ Then open frontend dashboard on Vercel and confirm metrics update.
 4. Set custom domains later for stable tracking URLs.
 5. Keep `apps/web/prisma` and `apps/backend/prisma` in sync when schema changes.
 
+---
+
+## 7. GitHub Auto-Deploy Hooks
+
+This repo includes:
+- ` .github/workflows/ci.yml` for validation
+- ` .github/workflows/deploy-hooks.yml` to trigger Vercel + Render after CI passes on `main`
+
+### 7.1 Required GitHub Secrets
+
+In GitHub repo settings -> `Secrets and variables` -> `Actions`, add:
+1. `VERCEL_DEPLOY_HOOK_URL`
+2. `RENDER_DEPLOY_HOOK_URL`
+
+If a secret is missing, that deploy target is skipped safely.
+
+### 7.2 Create Vercel Deploy Hook URL
+
+1. Open Vercel project settings.
+2. Go to `Git` -> `Deploy Hooks`.
+3. Create a hook for branch `main`.
+4. Copy the hook URL into GitHub secret `VERCEL_DEPLOY_HOOK_URL`.
+
+### 7.3 Create Render Deploy Hook URL
+
+1. Open Render service `sourcetrace-backend`.
+2. Go to settings -> `Deploy Hook`.
+3. Copy the hook URL into GitHub secret `RENDER_DEPLOY_HOOK_URL`.
+
+### 7.4 Flow Summary
+
+1. Push to `main`.
+2. CI workflow runs (`lint`, `build`, checks).
+3. If CI succeeds, deploy-hooks workflow calls Vercel and Render hooks.

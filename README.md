@@ -73,6 +73,16 @@ TIKTOK_ADVERTISER_ID=...
 3. Deploy frontend (`apps/web`) on Vercel free tier.
 4. Point frontend `NEXT_PUBLIC_TRACKING_BASE_URL` to Render backend URL.
 
+## GitHub Auto-Deploy
+
+This repo includes:
+1. `.github/workflows/ci.yml`
+2. `.github/workflows/deploy-hooks.yml`
+
+Set these GitHub Actions secrets to enable deploy triggers:
+1. `VERCEL_DEPLOY_HOOK_URL`
+2. `RENDER_DEPLOY_HOOK_URL`
+
 ## Next Build Priorities
 
 1. Add ingestion API key rotation + expiry policies.
