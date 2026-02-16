@@ -1,0 +1,277 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  ANALYST
+  VIEWER
+}
+
+enum Platform {
+  IOS
+  ANDROID
+}
+
+enum EventName {
+  INSTALL
+  SIGNUP
+  TRIAL_START
+  PURCHASE
+  SUBSCRIPTION_START
+  SUBSCRIPTION_RENEWAL
+  CUSTOM
+}
+
+enum AttributionStatus {
+  ATTRIBUTED
+  ORGANIC
+}
+
+model User {
+  id             String            @id @default(cuid())
+  email          String            @unique
+  passwordHash   String
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  sessions       Session[]
+  memberships    WorkspaceMember[]
+  createdLinks   TrackingLink[]    @relation("LinkCreator")
+  createdApiKeys IngestionApiKey[] @relation("ApiKeyCreator")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  userAgent String?
+  ipAddress String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Workspace {
+  id            String            @id @default(cuid())
+  name          String
+  slug          String            @unique
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  members       WorkspaceMember[]
+  apps          MobileApp[]
+  links         TrackingLink[]
+  installs      Install[]
+  events        Event[]
+  apiKeys       IngestionApiKey[]
+  adCostEntries AdCostEntry[]
+  skanPostbacks SkanPostback[]
+}
+
+model WorkspaceMember {
+  id          String    @id @default(cuid())
+  userId      String
+  workspaceId String
+  role        Role      @default(VIEWER)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+  @@index([workspaceId, role])
+}
+
+model MobileApp {
+  id                 String            @id @default(cuid())
+  workspaceId        String
+  name               String
+  iosBundleId        String?
+  androidPackageName String?
+  appStoreId         String?
+  playStoreId        String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  workspace          Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  links              TrackingLink[]
+  installs           Install[]
+  events             Event[]
+  apiKeys            IngestionApiKey[]
+  adCostEntries      AdCostEntry[]
+  skanPostbacks      SkanPostback[]
+
+  @@index([workspaceId])
+}
+
+model TrackingLink {
+  id              String    @id @default(cuid())
+  workspaceId     String
+  appId           String
+  createdByUserId String?
+  slug            String    @unique
+  source          String
+  channel         String
+  campaign        String
+  adset           String?
+  creative        String?
+  influencerId    String?
+  destinationUrl  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  app             MobileApp @relation(fields: [appId], references: [id], onDelete: Cascade)
+  createdBy       User?     @relation("LinkCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  clicks          Click[]
+  installs        Install[]
+
+  @@index([workspaceId, appId, createdAt])
+  @@index([source, channel, campaign])
+}
+
+model Click {
+  id           String    @id @default(cuid())
+  linkId       String
+  clickId      String    @unique
+  clickedAt    DateTime  @default(now())
+  ipAddress    String?
+  userAgent    String?
+  referrer     String?
+  platformHint Platform?
+  locale       String?
+  query        Json?
+  link         TrackingLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  installs     Install[]
+
+  @@index([linkId, clickedAt])
+}
+
+model Install {
+  id               String            @id @default(cuid())
+  workspaceId      String
+  appId            String
+  linkId           String?
+  clickInternalId  String?
+  platform         Platform
+  deviceId         String?
+  externalUserId   String?
+  installReferrer  String?
+  skanCampaignId   String?
+  attributionStatus AttributionStatus @default(ORGANIC)
+  attributedSource String?
+  attributedChannel String?
+  attributedCampaign String?
+  installedAt      DateTime
+  createdAt        DateTime          @default(now())
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  app              MobileApp         @relation(fields: [appId], references: [id], onDelete: Cascade)
+  link             TrackingLink?     @relation(fields: [linkId], references: [id], onDelete: SetNull)
+  click            Click?            @relation(fields: [clickInternalId], references: [id], onDelete: SetNull)
+  events           Event[]
+
+  @@index([workspaceId, installedAt])
+  @@index([appId, deviceId, installedAt])
+}
+
+model Event {
+  id                  String            @id @default(cuid())
+  workspaceId         String
+  appId               String
+  installId           String?
+  eventName           EventName
+  eventNameRaw        String?
+  occurredAt          DateTime
+  platform            Platform
+  deviceId            String?
+  externalUserId      String?
+  eventValue          Float?
+  currency            String?
+  metadata            Json?
+  attributionStatus   AttributionStatus @default(ORGANIC)
+  attributionSource   String?
+  attributionChannel  String?
+  attributionCampaign String?
+  createdAt           DateTime          @default(now())
+  workspace           Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  app                 MobileApp         @relation(fields: [appId], references: [id], onDelete: Cascade)
+  install             Install?          @relation(fields: [installId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, occurredAt])
+  @@index([appId, eventName, occurredAt])
+  @@index([attributionSource, attributionChannel])
+}
+
+model IngestionApiKey {
+  id              String    @id @default(cuid())
+  workspaceId     String
+  appId           String?
+  createdByUserId String?
+  name            String
+  keyPrefix       String
+  keyHash         String    @unique
+  scopes          String[]  @default([])
+  isActive        Boolean   @default(true)
+  lastUsedAt      DateTime?
+  createdAt       DateTime  @default(now())
+  revokedAt       DateTime?
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  app             MobileApp? @relation(fields: [appId], references: [id], onDelete: SetNull)
+  createdBy       User?     @relation("ApiKeyCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, isActive])
+  @@index([appId, isActive])
+  @@index([createdAt])
+}
+
+model AdCostEntry {
+  id          String    @id @default(cuid())
+  workspaceId String
+  appId       String?
+  source      String
+  channel     String
+  campaign    String?
+  adset       String?
+  creative    String?
+  date        DateTime
+  costUsd     Float
+  impressions Int?
+  clicks      Int?
+  installs    Int?
+  currency    String    @default("USD")
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  app         MobileApp? @relation(fields: [appId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, date])
+  @@index([workspaceId, source, channel, date])
+  @@index([appId, date])
+}
+
+model SkanPostback {
+  id                  String    @id @default(cuid())
+  workspaceId         String
+  appId               String
+  campaignId          String?
+  conversionValue     Int?
+  sourceAppId         String?
+  fidelityType        String?
+  isRedownload        Boolean?
+  postbackAt          DateTime?
+  attributedSource    String?
+  attributedChannel   String?
+  attributedCampaign  String?
+  rawPayload          Json
+  createdAt           DateTime  @default(now())
+  workspace           Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  app                 MobileApp @relation(fields: [appId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, appId, createdAt])
+  @@index([campaignId, postbackAt])
+}

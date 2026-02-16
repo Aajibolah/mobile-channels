@@ -1,0 +1,22 @@
+{
+  "name": "sourcetrace",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w web",
+    "dev:backend": "npm run dev -w backend",
+    "build": "npm run build -w web",
+    "build:backend": "npm run prisma:generate -w backend",
+    "lint": "npm run lint -w web",
+    "start": "npm run start -w web",
+    "start:backend": "npm run start -w backend",
+    "prisma:generate": "npm run prisma:generate -w web",
+    "prisma:migrate": "npm run prisma:migrate -w web",
+    "prisma:studio": "npm run prisma:studio -w web",
+    "prisma:generate:backend": "npm run prisma:generate -w backend",
+    "prisma:migrate:backend": "npm run prisma:migrate -w backend"
+  }
+}

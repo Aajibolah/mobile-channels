@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma clients
+        run: |
+          npm run prisma:generate
+          npm run prisma:generate:backend
+
+      - name: Lint web app
+        run: npm run lint
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Check backend syntax
+        run: node --check apps/backend/src/server.js
+
