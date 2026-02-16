@@ -1,4 +1,5 @@
 # SourceTrace
+Open Source Channel Attribution
 
 SourceTrace is a cost-first mobile attribution product for startup and growth
 teams. This repository currently contains:
